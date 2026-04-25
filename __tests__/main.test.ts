@@ -74,6 +74,27 @@ const defaultInputs: Record<string, string> = {
     ...ycSaJsonCredentials
 }
 
+function testInstance(
+    metadata: Record<string, string> = { 'user-data': 'userdata', 'docker-compose': 'dockercompose' }
+): Instance {
+    return Instance.fromJSON({
+        id: 'instanceid',
+        metadata,
+        bootDisk: {
+            diskId: 'diskid'
+        },
+        networkInterfaces: [
+            {
+                primaryV4Address: {
+                    oneToOneNat: {
+                        address: '1.1.1.1'
+                    }
+                }
+            }
+        ]
+    })
+}
+
 describe('action', () => {
     beforeEach(() => {
         jest.clearAllMocks()
@@ -121,15 +142,7 @@ describe('action', () => {
         process.env.GITHUB_REPOSITORY = 'owner/repo'
         process.env.GITHUB_SHA = 'sha'
 
-        sdk.__setComputeInstanceList([
-            Instance.fromJSON({
-                id: 'instanceid',
-                metadata: {
-                    'user-data': 'userdata',
-                    'docker-compose': 'dockercompose'
-                }
-            })
-        ])
+        sdk.__setComputeInstanceList([testInstance()])
 
         await main.run()
         expect(runMock).toHaveReturned()
@@ -137,6 +150,7 @@ describe('action', () => {
         expect(setFailedMock).not.toHaveBeenCalled()
         expect(setOutputMock).toHaveBeenCalledWith('instance-id', 'instanceid')
         expect(setOutputMock).toHaveBeenCalledWith('disk-id', 'diskid')
+        expect(setOutputMock).toHaveBeenCalledWith('public-ip', '1.1.1.1')
     })
 
     it('updates vm when there is one with IAM token', async () => {
@@ -153,15 +167,7 @@ describe('action', () => {
         process.env.GITHUB_REPOSITORY = 'owner/repo'
         process.env.GITHUB_SHA = 'sha'
 
-        sdk.__setComputeInstanceList([
-            Instance.fromJSON({
-                id: 'instanceid',
-                metadata: {
-                    'user-data': 'userdata',
-                    'docker-compose': 'dockercompose'
-                }
-            })
-        ])
+        sdk.__setComputeInstanceList([testInstance()])
 
         await main.run()
         expect(runMock).toHaveReturned()
@@ -169,6 +175,7 @@ describe('action', () => {
         expect(setFailedMock).not.toHaveBeenCalled()
         expect(setOutputMock).toHaveBeenCalledWith('instance-id', 'instanceid')
         expect(setOutputMock).toHaveBeenCalledWith('disk-id', 'diskid')
+        expect(setOutputMock).toHaveBeenCalledWith('public-ip', '1.1.1.1')
     })
 
     it('updates vm when there is one with GitHub token', async () => {
@@ -185,15 +192,7 @@ describe('action', () => {
         process.env.GITHUB_REPOSITORY = 'owner/repo'
         process.env.GITHUB_SHA = 'sha'
 
-        sdk.__setComputeInstanceList([
-            Instance.fromJSON({
-                id: 'instanceid',
-                metadata: {
-                    'user-data': 'userdata',
-                    'docker-compose': 'dockercompose'
-                }
-            })
-        ])
+        sdk.__setComputeInstanceList([testInstance()])
 
         await main.run()
         expect(runMock).toHaveReturned()
@@ -201,6 +200,7 @@ describe('action', () => {
         expect(setFailedMock).not.toHaveBeenCalled()
         expect(setOutputMock).toHaveBeenCalledWith('instance-id', 'instanceid')
         expect(setOutputMock).toHaveBeenCalledWith('disk-id', 'diskid')
+        expect(setOutputMock).toHaveBeenCalledWith('public-ip', '1.1.1.1')
     })
 
     it('creates vm when there is none', async () => {
@@ -221,6 +221,7 @@ describe('action', () => {
         expect(setFailedMock).not.toHaveBeenCalled()
         expect(setOutputMock).toHaveBeenCalledWith('instance-id', 'instanceid')
         expect(setOutputMock).toHaveBeenCalledWith('disk-id', 'diskid')
+        expect(setOutputMock).toHaveBeenCalledWith('public-ip', '1.1.1.1')
     })
 
     it('reports if could not create vm', async () => {
@@ -262,6 +263,7 @@ describe('action', () => {
         expect(setFailedMock).not.toHaveBeenCalled()
         expect(setOutputMock).toHaveBeenCalledWith('instance-id', 'instanceid')
         expect(setOutputMock).toHaveBeenCalledWith('disk-id', 'diskid')
+        expect(setOutputMock).toHaveBeenCalledWith('public-ip', '1.1.1.1')
     })
 
     it('should fail if neither service account id nor name is provided', async () => {
@@ -305,6 +307,7 @@ describe('action', () => {
         expect(setFailedMock).not.toHaveBeenCalled()
         expect(setOutputMock).toHaveBeenCalledWith('instance-id', 'instanceid')
         expect(setOutputMock).toHaveBeenCalledWith('disk-id', 'diskid')
+        expect(setOutputMock).toHaveBeenCalledWith('public-ip', '1.1.1.1')
     })
 
     it('should fail if could not resolve SA', async () => {
@@ -340,13 +343,7 @@ describe('action', () => {
         })
 
         sdk.__setComputeInstanceList([
-            Instance.fromJSON({
-                id: 'instanceid',
-                metadata: {
-                    'user-data': 'userdata',
-                    [DOCKER_CONTAINER_DECLARATION_KEY]: 'unsupported'
-                }
-            })
+            testInstance({ 'user-data': 'userdata', [DOCKER_CONTAINER_DECLARATION_KEY]: 'unsupported' })
         ])
 
         await main.run()
@@ -373,15 +370,7 @@ describe('action', () => {
             return inputs[name] || ''
         })
 
-        sdk.__setComputeInstanceList([
-            Instance.fromJSON({
-                id: 'instanceid',
-                metadata: {
-                    'user-data': 'userdata',
-                    'docker-compose': 'dockercompose'
-                }
-            })
-        ])
+        sdk.__setComputeInstanceList([testInstance()])
         sdk.__setUpdateMetadataFail(true)
 
         await main.run()

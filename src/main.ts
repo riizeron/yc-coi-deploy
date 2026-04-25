@@ -120,22 +120,25 @@ function prepareConfig(filePath: string): string {
     )
 }
 
-function getInstanceFromOperation(op: Operation): Instance | undefined {
-    const v = op.response?.value
-    if (v !== undefined) {
-        return Instance.decode(v)
-    }
-}
-
-function setOutputs(op: Operation): void {
-    const instance = getInstanceFromOperation(op)
-
+function setOutputs(instance: Instance): void {
     setOutput('instance-id', instance?.id)
     setOutput('disk-id', instance?.bootDisk?.diskId)
 
     if (instance?.networkInterfaces && instance?.networkInterfaces.length > 0) {
         setOutput('public-ip', instance?.networkInterfaces[0].primaryV4Address?.oneToOneNat?.address)
     }
+}
+
+async function getVm(
+    instanceService: WrappedServiceClientType<typeof InstanceServiceService>,
+    instanceId: string
+): Promise<Instance> {
+    return instanceService.get(
+        GetInstanceRequest.fromPartial({
+            instanceId,
+            view: InstanceView.FULL
+        })
+    )
 }
 
 async function createVm(
@@ -192,11 +195,11 @@ async function createVm(
     if (finishedOp.response) {
         const instanceId = decodeMessage<Instance>(finishedOp.response).id
         info(`Created instance with id '${instanceId}'`)
+        setOutputs(await getVm(instanceService, instanceId))
     } else {
         error(`Failed to create instance'`)
         throw new Error('Failed to create instance')
     }
-    setOutputs(finishedOp)
     endGroup()
 }
 
@@ -226,7 +229,7 @@ async function updateMetadata(
         error(`Failed to update instance metadata'`)
         throw new Error('Failed  to update instance metadata')
     }
-    setOutputs(op)
+    setOutputs(await getVm(instanceService, instanceId))
     endGroup()
     return op
 }
@@ -289,12 +292,7 @@ async function detectMetadataConflict(
     instanceId: string
 ): Promise<boolean> {
     startGroup('Check metadata')
-    const instance = await instanceService.get(
-        GetInstanceRequest.fromPartial({
-            instanceId,
-            view: InstanceView.FULL
-        })
-    )
+    const instance = await getVm(instanceService, instanceId)
     if (DOCKER_CONTAINER_DECLARATION_KEY in instance.metadata) {
         throw Error(
             `Provided VM was created with '${DOCKER_CONTAINER_DECLARATION_KEY}' metadata key.
