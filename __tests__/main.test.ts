@@ -280,6 +280,27 @@ describe('action', () => {
         )
     })
 
+    it('creates vm with security groups when requested', async () => {
+        getInputMock.mockImplementation((name: string): string => {
+            const inputs = {
+                ...defaultInputs,
+                'vm-security-group-ids': 'security-group-1, security-group-2'
+            }
+
+            return inputs[name] || ''
+        })
+
+        sdk.__setComputeInstanceList([])
+
+        await main.run()
+        const request = sdk.__getLastCreateInstanceRequest()
+
+        expect(runMock).toHaveReturned()
+        expect(errorMock).not.toHaveBeenCalled()
+        expect(setFailedMock).not.toHaveBeenCalled()
+        expect(request?.networkInterfaceSpecs[0].securityGroupIds).toEqual(['security-group-1', 'security-group-2'])
+    })
+
     it('reports if could not create vm', async () => {
         // Set the action's inputs as return values from core.getInput()
         getInputMock.mockImplementation((name: string): string => {

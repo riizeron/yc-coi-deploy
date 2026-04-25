@@ -56,6 +56,9 @@ inputs:
   vm-subnet-id:
     required: true
     description: 'The subnet ID where the VM will be created'
+  vm-security-group-ids:
+    required: false
+    description: 'Comma-separated list of security group IDs to attach to the VM network interface'
   vm-public-ip:
     required: false
     description: 'Public IP address'

@@ -101,6 +101,7 @@ interface VmParams {
     userDataPath: string
     dockerComposePath: string
     subnetId: string
+    securityGroupIds: string[]
     ipAddress: string
     hostname: string
     dnsRecord: DnsRecordParams | undefined
@@ -195,6 +196,7 @@ async function createVm(
             networkInterfaceSpecs: [
                 {
                     subnetId: vmParams.subnetId,
+                    securityGroupIds: vmParams.securityGroupIds,
                     primaryV4AddressSpec: {
                         oneToOneNatSpec: {
                             address: vmParams.ipAddress,
@@ -284,6 +286,10 @@ function parseVmInputs(): VmParams {
 
     const zoneId: string = getInput('vm-zone-id') || 'ru-central1-a'
     const subnetId: string = getInput('vm-subnet-id', { required: true })
+    const securityGroupIds: string[] = getInput('vm-security-group-ids')
+        .split(',')
+        .map(id => id.trim())
+        .filter(id => id)
     const ipAddress: string = getInput('vm-public-ip')
     const hostname: string = getInput('vm-hostname')
     const dnsFqdn: string = getInput('vm-dns-fqdn')
@@ -309,6 +315,7 @@ function parseVmInputs(): VmParams {
         diskType,
         diskSize,
         subnetId,
+        securityGroupIds,
         ipAddress,
         hostname,
         dnsRecord: dnsFqdn

@@ -49,6 +49,7 @@ using the provided image name and tag.
         vm-memory: 2Gb
         vm-core-fraction: 100
         vm-subnet-id: e9b*********
+        vm-security-group-ids: enp********,enp********
         vm-hostname: yc-action-demo
         vm-dns-fqdn: yc-action-demo.example.com.
         vm-dns-zone-id: dns********
