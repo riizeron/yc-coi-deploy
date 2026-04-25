@@ -59,6 +59,22 @@ inputs:
   vm-public-ip:
     required: false
     description: 'Public IP address'
+  vm-hostname:
+    required: false
+    description: 'Host name for the instance. Used to generate internal FQDN: <hostname>.<region_id>.internal'
+  vm-dns-fqdn:
+    required: false
+    description: 'DNS A record FQDN to create for the public IP address. Use trailing dot for absolute names, e.g. app.example.com.'
+  vm-dns-zone-id:
+    required: false
+    description: 'Cloud DNS zone ID for vm-dns-fqdn'
+  vm-dns-ttl:
+    required: false
+    description: 'DNS record TTL in seconds'
+  vm-dns-ptr:
+    required: false
+    description: 'Create a corresponding PTR DNS record for vm-dns-fqdn'
+    default: 'false'
   vm-platform-id:
     required: false
     description: 'Compute platform Id'

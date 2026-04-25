@@ -246,6 +246,40 @@ describe('action', () => {
         expect(sdk.__getLastCreateInstanceRequest()?.schedulingPolicy?.preemptible).toBe(true)
     })
 
+    it('creates vm with hostname and public dns record when requested', async () => {
+        getInputMock.mockImplementation((name: string): string => {
+            const inputs = {
+                ...defaultInputs,
+                'vm-hostname': 'app',
+                'vm-dns-fqdn': 'app.example.com.',
+                'vm-dns-zone-id': 'dns-zone-id',
+                'vm-dns-ttl': '300',
+                'vm-dns-ptr': 'true'
+            }
+
+            return inputs[name] || ''
+        })
+
+        sdk.__setComputeInstanceList([])
+
+        await main.run()
+        const request = sdk.__getLastCreateInstanceRequest()
+        const dnsRecord = request?.networkInterfaceSpecs[0].primaryV4AddressSpec?.oneToOneNatSpec?.dnsRecordSpecs[0]
+
+        expect(runMock).toHaveReturned()
+        expect(errorMock).not.toHaveBeenCalled()
+        expect(setFailedMock).not.toHaveBeenCalled()
+        expect(request?.hostname).toBe('app')
+        expect(dnsRecord).toEqual(
+            expect.objectContaining({
+                fqdn: 'app.example.com.',
+                dnsZoneId: 'dns-zone-id',
+                ttl: 300,
+                ptr: true
+            })
+        )
+    })
+
     it('reports if could not create vm', async () => {
         // Set the action's inputs as return values from core.getInput()
         getInputMock.mockImplementation((name: string): string => {

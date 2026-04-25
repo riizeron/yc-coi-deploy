@@ -90,11 +90,20 @@ interface ResourcesSpec {
     coreFraction: number
 }
 
+interface DnsRecordParams {
+    fqdn: string
+    zoneId: string
+    ttl: number | undefined
+    ptr: boolean
+}
+
 interface VmParams {
     userDataPath: string
     dockerComposePath: string
     subnetId: string
     ipAddress: string
+    hostname: string
+    dnsRecord: DnsRecordParams | undefined
     serviceAccountId: string
     serviceAccountName: string | undefined
     diskType: string
@@ -119,6 +128,10 @@ function prepareConfig(filePath: string): string {
         {},
         { escape: x => x }
     )
+}
+
+function parseBooleanInput(name: string): boolean {
+    return (getInput(name) || 'false').toLowerCase() === 'true'
 }
 
 function setOutputs(instance: Instance): void {
@@ -162,6 +175,7 @@ async function createVm(
             description: `Created from: ${repo.owner}/${repo.repo}`,
             zoneId: vmParams.zoneId,
             platformId: vmParams.platformId,
+            hostname: vmParams.hostname,
             resourcesSpec: vmParams.resourcesSpec,
             metadata: {
                 'user-data': prepareConfig(vmParams.userDataPath),
@@ -184,7 +198,17 @@ async function createVm(
                     primaryV4AddressSpec: {
                         oneToOneNatSpec: {
                             address: vmParams.ipAddress,
-                            ipVersion: IpVersion.IPV4
+                            ipVersion: IpVersion.IPV4,
+                            dnsRecordSpecs: vmParams.dnsRecord
+                                ? [
+                                      {
+                                          fqdn: vmParams.dnsRecord.fqdn,
+                                          dnsZoneId: vmParams.dnsRecord.zoneId,
+                                          ttl: vmParams.dnsRecord.ttl,
+                                          ptr: vmParams.dnsRecord.ptr
+                                      }
+                                  ]
+                                : []
                         }
                     }
                 }
@@ -261,8 +285,19 @@ function parseVmInputs(): VmParams {
     const zoneId: string = getInput('vm-zone-id') || 'ru-central1-a'
     const subnetId: string = getInput('vm-subnet-id', { required: true })
     const ipAddress: string = getInput('vm-public-ip')
+    const hostname: string = getInput('vm-hostname')
+    const dnsFqdn: string = getInput('vm-dns-fqdn')
+    const dnsZoneId: string = getInput('vm-dns-zone-id')
+    const dnsTtlInput: string = getInput('vm-dns-ttl')
+    const dnsTtl: number | undefined = dnsTtlInput ? Number(dnsTtlInput) : undefined
+    const dnsPtr: boolean = parseBooleanInput('vm-dns-ptr')
+
+    if (dnsTtlInput && (dnsTtl === undefined || !Number.isInteger(dnsTtl) || dnsTtl < 0)) {
+        throw new Error('vm-dns-ttl should be a non-negative integer')
+    }
+
     const platformId: string = getInput('vm-platform-id') || 'standard-v3'
-    const preemptible: boolean = (getInput('vm-preemptible') || 'false').toLowerCase() === 'true'
+    const preemptible: boolean = parseBooleanInput('vm-preemptible')
     const cores: number = parseInt(getInput('vm-cores') || '2', 10)
     const memory: number = parseMemory(getInput('vm-memory') || '2Gb')
     const diskType: string = getInput('vm-disk-type') || 'network-ssd'
@@ -275,6 +310,15 @@ function parseVmInputs(): VmParams {
         diskSize,
         subnetId,
         ipAddress,
+        hostname,
+        dnsRecord: dnsFqdn
+            ? {
+                  fqdn: dnsFqdn,
+                  zoneId: dnsZoneId,
+                  ttl: dnsTtl,
+                  ptr: dnsPtr
+              }
+            : undefined,
         zoneId,
         platformId,
         preemptible,
