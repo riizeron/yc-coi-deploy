@@ -12,6 +12,7 @@ import * as sdk from '@yandex-cloud/nodejs-sdk'
 import * as github from '@actions/github'
 import axios from 'axios'
 import { Instance } from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/compute/v1/instance'
+import { CreateInstanceRequest } from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/compute/v1/instance_service'
 import { ServiceAccount } from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/iam/v1/service_account'
 import { DOCKER_CONTAINER_DECLARATION_KEY } from '../src/const'
 
@@ -23,6 +24,8 @@ declare module '@yandex-cloud/nodejs-sdk' {
     function __setCreateInstanceFail(value: boolean): void
 
     function __setUpdateMetadataFail(value: boolean): void
+
+    function __getLastCreateInstanceRequest(): CreateInstanceRequest | undefined
 }
 
 // Mock the action's main function
@@ -222,6 +225,25 @@ describe('action', () => {
         expect(setOutputMock).toHaveBeenCalledWith('instance-id', 'instanceid')
         expect(setOutputMock).toHaveBeenCalledWith('disk-id', 'diskid')
         expect(setOutputMock).toHaveBeenCalledWith('public-ip', '1.1.1.1')
+    })
+
+    it('creates preemptible vm when requested', async () => {
+        getInputMock.mockImplementation((name: string): string => {
+            const inputs = {
+                ...defaultInputs,
+                'vm-preemptible': 'true'
+            }
+
+            return inputs[name] || ''
+        })
+
+        sdk.__setComputeInstanceList([])
+
+        await main.run()
+        expect(runMock).toHaveReturned()
+        expect(errorMock).not.toHaveBeenCalled()
+        expect(setFailedMock).not.toHaveBeenCalled()
+        expect(sdk.__getLastCreateInstanceRequest()?.schedulingPolicy?.preemptible).toBe(true)
     })
 
     it('reports if could not create vm', async () => {

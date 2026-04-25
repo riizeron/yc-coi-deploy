@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Instance } from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/compute/v1/instance'
+import { CreateInstanceRequest } from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/compute/v1/instance_service'
 import { Operation } from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/operation/operation'
 import { Writer } from 'protobufjs'
 import { decodeMessage } from '@yandex-cloud/nodejs-sdk'
@@ -15,6 +16,7 @@ let serviceAccounts: ServiceAccount[] = [
 ]
 let createInstanceFail = false
 let updateMetadataFail = false
+let lastCreateInstanceRequest: CreateInstanceRequest | undefined
 
 const ImageServiceMock = {
     get: jest.fn().mockImplementation(() => ({
@@ -44,7 +46,9 @@ function getOperation(payloadClass: PayloadClass<any>, data: object): Operation 
 }
 
 const InstanceServiceMock = {
-    create: jest.fn().mockImplementation(() => {
+    create: jest.fn().mockImplementation((request: CreateInstanceRequest) => {
+        lastCreateInstanceRequest = request
+
         if (createInstanceFail) {
             return Operation.fromJSON({
                 id: 'operationid',
@@ -132,10 +136,15 @@ sdk.__setServiceAccountList = (value: any[]) => {
 
 sdk.__setCreateInstanceFail = (value: boolean) => {
     createInstanceFail = value
+    lastCreateInstanceRequest = undefined
 }
 
 sdk.__setUpdateMetadataFail = (value: boolean) => {
     updateMetadataFail = value
+}
+
+sdk.__getLastCreateInstanceRequest = () => {
+    return lastCreateInstanceRequest
 }
 
 export = sdk

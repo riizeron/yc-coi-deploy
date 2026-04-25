@@ -63,6 +63,10 @@ inputs:
     required: false
     description: 'Compute platform Id'
     default: 'standard-v3'
+  vm-preemptible:
+    required: false
+    description: 'Create a preemptible VM'
+    default: 'false'
   user-data-path:
     required: true
     description: 'Path to the `user-data.yaml` file inside repo.'

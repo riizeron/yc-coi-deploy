@@ -103,6 +103,7 @@ interface VmParams {
     name: string
     zoneId: string
     platformId: string
+    preemptible: boolean
     resourcesSpec: ResourcesSpec
 }
 
@@ -188,6 +189,9 @@ async function createVm(
                     }
                 }
             ],
+            schedulingPolicy: {
+                preemptible: vmParams.preemptible
+            },
             serviceAccountId: vmParams.serviceAccountId
         })
     )
@@ -258,6 +262,7 @@ function parseVmInputs(): VmParams {
     const subnetId: string = getInput('vm-subnet-id', { required: true })
     const ipAddress: string = getInput('vm-public-ip')
     const platformId: string = getInput('vm-platform-id') || 'standard-v3'
+    const preemptible: boolean = (getInput('vm-preemptible') || 'false').toLowerCase() === 'true'
     const cores: number = parseInt(getInput('vm-cores') || '2', 10)
     const memory: number = parseMemory(getInput('vm-memory') || '2Gb')
     const diskType: string = getInput('vm-disk-type') || 'network-ssd'
@@ -272,6 +277,7 @@ function parseVmInputs(): VmParams {
         ipAddress,
         zoneId,
         platformId,
+        preemptible,
         folderId,
         name,
         userDataPath,
