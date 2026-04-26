@@ -265,7 +265,6 @@ async function updateMetadata(
         error(`Failed to update instance metadata'`)
         throw new Error('Failed  to update instance metadata')
     }
-    setOutputs(await getVm(instanceService, instanceId))
     endGroup()
     return op
 }
@@ -451,6 +450,7 @@ export async function run(): Promise<void> {
             await detectMetadataConflict(session, instanceService, vmId)
             await updateMetadata(session, instanceService, vmId, vmInputs)
             await startVmIfStopped(session, instanceService, vmId, vmInputs.startIfStopped)
+            setOutputs(await getVm(instanceService, vmId))
         }
     } catch (err) {
         if (err instanceof errors.ApiError) {

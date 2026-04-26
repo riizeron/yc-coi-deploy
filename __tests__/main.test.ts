@@ -31,6 +31,8 @@ declare module '@yandex-cloud/nodejs-sdk' {
     function __getLastCreateInstanceRequest(): CreateInstanceRequest | undefined
 
     function __getLastStartInstanceRequest(): StartInstanceRequest | undefined
+
+    function __setPublicIpAfterStart(value: string | undefined): void
 }
 
 // Mock the action's main function
@@ -84,7 +86,8 @@ const defaultInputs: Record<string, string> = {
 
 function testInstance(
     metadata: Record<string, string> = { 'user-data': 'userdata', 'docker-compose': 'dockercompose' },
-    status: Instance_Status = Instance_Status.RUNNING
+    status: Instance_Status = Instance_Status.RUNNING,
+    publicIp: string | undefined = '1.1.1.1'
 ): Instance {
     return Instance.fromJSON({
         id: 'instanceid',
@@ -96,9 +99,11 @@ function testInstance(
         networkInterfaces: [
             {
                 primaryV4Address: {
-                    oneToOneNat: {
-                        address: '1.1.1.1'
-                    }
+                    oneToOneNat: publicIp
+                        ? {
+                              address: publicIp
+                          }
+                        : undefined
                 }
             }
         ]
@@ -223,13 +228,16 @@ describe('action', () => {
             return inputs[name] || ''
         })
 
-        sdk.__setComputeInstanceList([testInstance(undefined, Instance_Status.STOPPED)])
+        sdk.__setComputeInstanceList([testInstance(undefined, Instance_Status.STOPPED, undefined)])
+        sdk.__setPublicIpAfterStart('1.1.1.1')
 
         await main.run()
         expect(runMock).toHaveReturned()
         expect(errorMock).not.toHaveBeenCalled()
         expect(setFailedMock).not.toHaveBeenCalled()
         expect(sdk.__getLastStartInstanceRequest()?.instanceId).toBe('instanceid')
+        expect(setOutputMock).toHaveBeenCalledWith('public-ip', '1.1.1.1')
+        expect(setOutputMock.mock.calls.filter(([name]) => name === 'public-ip')).toHaveLength(1)
     })
 
     it('creates vm when there is none', async () => {

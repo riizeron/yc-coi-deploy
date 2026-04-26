@@ -21,6 +21,7 @@ let createInstanceFail = false
 let updateMetadataFail = false
 let lastCreateInstanceRequest: CreateInstanceRequest | undefined
 let lastStartInstanceRequest: StartInstanceRequest | undefined
+let publicIpAfterStart: string | undefined
 
 const ImageServiceMock = {
     get: jest.fn().mockImplementation(() => ({
@@ -106,6 +107,20 @@ const InstanceServiceMock = {
     }),
     start: jest.fn().mockImplementation((request: StartInstanceRequest) => {
         lastStartInstanceRequest = request
+        if (publicIpAfterStart && instances[0]) {
+            const instance = Instance.toJSON(instances[0]) as any
+            instance.status = 'RUNNING'
+            instance.networkInterfaces = [
+                {
+                    primaryV4Address: {
+                        oneToOneNat: {
+                            address: publicIpAfterStart
+                        }
+                    }
+                }
+            ]
+            instances = [Instance.fromJSON(instance)]
+        }
         return Operation.fromJSON({
             id: 'operationid',
             response: {},
@@ -150,6 +165,7 @@ sdk.__setCreateInstanceFail = (value: boolean) => {
     createInstanceFail = value
     lastCreateInstanceRequest = undefined
     lastStartInstanceRequest = undefined
+    publicIpAfterStart = undefined
 }
 
 sdk.__setUpdateMetadataFail = (value: boolean) => {
@@ -162,6 +178,10 @@ sdk.__getLastCreateInstanceRequest = () => {
 
 sdk.__getLastStartInstanceRequest = () => {
     return lastStartInstanceRequest
+}
+
+sdk.__setPublicIpAfterStart = (value: string | undefined) => {
+    publicIpAfterStart = value
 }
 
 export = sdk
