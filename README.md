@@ -53,6 +53,7 @@ using the provided image name and tag.
         vm-hostname: yc-action-demo
         vm-dns-fqdn: yc-action-demo.example.com.
         vm-dns-zone-id: dns********
+        vm-start-if-stopped: true
         user-data-path: './user-data.yaml'
         docker-compose-path: './docker-compose.yaml'
 ```

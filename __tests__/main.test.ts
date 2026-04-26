@@ -11,8 +11,11 @@ import * as main from '../src/main'
 import * as sdk from '@yandex-cloud/nodejs-sdk'
 import * as github from '@actions/github'
 import axios from 'axios'
-import { Instance } from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/compute/v1/instance'
-import { CreateInstanceRequest } from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/compute/v1/instance_service'
+import { Instance, Instance_Status } from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/compute/v1/instance'
+import {
+    CreateInstanceRequest,
+    StartInstanceRequest
+} from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/compute/v1/instance_service'
 import { ServiceAccount } from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/iam/v1/service_account'
 import { DOCKER_CONTAINER_DECLARATION_KEY } from '../src/const'
 
@@ -26,6 +29,8 @@ declare module '@yandex-cloud/nodejs-sdk' {
     function __setUpdateMetadataFail(value: boolean): void
 
     function __getLastCreateInstanceRequest(): CreateInstanceRequest | undefined
+
+    function __getLastStartInstanceRequest(): StartInstanceRequest | undefined
 }
 
 // Mock the action's main function
@@ -78,11 +83,13 @@ const defaultInputs: Record<string, string> = {
 }
 
 function testInstance(
-    metadata: Record<string, string> = { 'user-data': 'userdata', 'docker-compose': 'dockercompose' }
+    metadata: Record<string, string> = { 'user-data': 'userdata', 'docker-compose': 'dockercompose' },
+    status: Instance_Status = Instance_Status.RUNNING
 ): Instance {
     return Instance.fromJSON({
         id: 'instanceid',
         metadata,
+        status,
         bootDisk: {
             diskId: 'diskid'
         },
@@ -204,6 +211,25 @@ describe('action', () => {
         expect(setOutputMock).toHaveBeenCalledWith('instance-id', 'instanceid')
         expect(setOutputMock).toHaveBeenCalledWith('disk-id', 'diskid')
         expect(setOutputMock).toHaveBeenCalledWith('public-ip', '1.1.1.1')
+    })
+
+    it('starts stopped vm after update when requested', async () => {
+        getInputMock.mockImplementation((name: string): string => {
+            const inputs = {
+                ...defaultInputs,
+                'vm-start-if-stopped': 'true'
+            }
+
+            return inputs[name] || ''
+        })
+
+        sdk.__setComputeInstanceList([testInstance(undefined, Instance_Status.STOPPED)])
+
+        await main.run()
+        expect(runMock).toHaveReturned()
+        expect(errorMock).not.toHaveBeenCalled()
+        expect(setFailedMock).not.toHaveBeenCalled()
+        expect(sdk.__getLastStartInstanceRequest()?.instanceId).toBe('instanceid')
     })
 
     it('creates vm when there is none', async () => {

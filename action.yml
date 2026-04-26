@@ -86,6 +86,10 @@ inputs:
     required: false
     description: 'Create a preemptible VM'
     default: 'false'
+  vm-start-if-stopped:
+    required: false
+    description: 'Start an existing VM after updating metadata if it is stopped'
+    default: 'false'
   user-data-path:
     required: true
     description: 'Path to the `user-data.yaml` file inside repo.'

@@ -12,7 +12,11 @@ import {
     GetImageLatestByFamilyRequest,
     ImageServiceService
 } from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/compute/v1/image_service'
-import { Instance, IpVersion } from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/compute/v1/instance'
+import {
+    Instance,
+    Instance_Status,
+    IpVersion
+} from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/compute/v1/instance'
 import {
     AttachedDiskSpec_Mode,
     CreateInstanceRequest,
@@ -20,6 +24,7 @@ import {
     InstanceServiceService,
     InstanceView,
     ListInstancesRequest,
+    StartInstanceRequest,
     UpdateInstanceMetadataRequest
 } from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/compute/v1/instance_service'
 import {
@@ -114,6 +119,7 @@ interface VmParams {
     zoneId: string
     platformId: string
     preemptible: boolean
+    startIfStopped: boolean
     resourcesSpec: ResourcesSpec
 }
 
@@ -264,6 +270,37 @@ async function updateMetadata(
     return op
 }
 
+async function startVmIfStopped(
+    session: Session,
+    instanceService: WrappedServiceClientType<typeof InstanceServiceService>,
+    instanceId: string,
+    enabled: boolean
+): Promise<void> {
+    if (!enabled) {
+        return
+    }
+
+    const instance = await getVm(instanceService, instanceId)
+    if (instance.status !== Instance_Status.STOPPED) {
+        return
+    }
+
+    startGroup('Start stopped VM')
+    const op = await instanceService.start(
+        StartInstanceRequest.fromPartial({
+            instanceId
+        })
+    )
+    const finishedOp = await waitForOperation(op, session)
+    if (finishedOp.response) {
+        info(`Started instance with id '${instanceId}'`)
+    } else {
+        error(`Failed to start instance '${instanceId}'`)
+        throw new Error('Failed to start instance')
+    }
+    endGroup()
+}
+
 function parseVmInputs(): VmParams {
     startGroup('Parsing Action Inputs')
 
@@ -304,6 +341,7 @@ function parseVmInputs(): VmParams {
 
     const platformId: string = getInput('vm-platform-id') || 'standard-v3'
     const preemptible: boolean = parseBooleanInput('vm-preemptible')
+    const startIfStopped: boolean = parseBooleanInput('vm-start-if-stopped')
     const cores: number = parseInt(getInput('vm-cores') || '2', 10)
     const memory: number = parseMemory(getInput('vm-memory') || '2Gb')
     const diskType: string = getInput('vm-disk-type') || 'network-ssd'
@@ -329,6 +367,7 @@ function parseVmInputs(): VmParams {
         zoneId,
         platformId,
         preemptible,
+        startIfStopped,
         folderId,
         name,
         userDataPath,
@@ -411,6 +450,7 @@ export async function run(): Promise<void> {
         } else {
             await detectMetadataConflict(session, instanceService, vmId)
             await updateMetadata(session, instanceService, vmId, vmInputs)
+            await startVmIfStopped(session, instanceService, vmId, vmInputs.startIfStopped)
         }
     } catch (err) {
         if (err instanceof errors.ApiError) {
